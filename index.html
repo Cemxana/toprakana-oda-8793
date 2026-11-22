@@ -84,17 +84,17 @@ const I18={
  tr:{credit:"Hülya Elibol · projeksiyonlu orijinal tablo · simülasyon",snd:"ses",palm:"AVUÇLARI AÇ",cntL:"savaşta ölenler · 2025 başından bu yana · tahmini",cap0:"Tablo sessiz.",cap1:"İzleyici yaklaşıyor.",cap2:"Yaklaştıkça resim uyanıyor.",cap3:"İki avuç açılıyor. Işık ağacın kökünden yükseliyor.",cap4:"Ceninler birer birer uyanıyor.",cap5:"Sayı sıfıra iniyor ve ışığa karışıyor.",cap6:"Eller iniyor. Sayı gerçek değerine dönüyor.",cap7:"Durmak, yalnızca tutulduğu sürece.",
   hint:"sürükle: etrafına bak · W A S D / tekerlek: yürü · boşluğu basılı tut: avuçlarını aç, fareyi oynat: elin (yükseklik = ses tonu, yatay = ses yönü) · E: duvara taşan ışık · R: halkalar (vizyon) · T: sayaç hızı · Z: sıfırlanma süresi (5/10/15 sn) · A: otomatik gösterim · M: ses · H: arayüzü gizle",
   iTitle:"Toprak Ana",
-  i1:"Karanlık bir odanın ortasında Hülya Elibol'un Toprak Ana'sı havada asılı duruyor. Saçları ve ağacın dalları tablonun dışına, duvara uzanıyor.",
-  i2:"Etrafında dolaş, yaklaş. İki avucunu açıp bir hayatı taşır gibi tuttuğunda ağacın kökünden yavaşça bir ışık yükselir, çocuğun içinden geçip ceninleri birer birer uyandırır; saçlardan ve dallardan duvara taşan kökler aynı ışıkla uyanır. Havadaki rakamlar ve sayaç yavaşça sıfıra iner. Elini indirdiğin an geri dönerler. Kalp atışı bir dalgaya dönüşür, elini oynattıkça dalga değişir.",
-  i3:"Yaklaş. Bak. Avuçlarını aç.",
-  iProto:"Simülasyon: projeksiyon ışığı orijinal tablonun üzerine eklenir. Klavye, fare ve boşluk tuşu, Kinect sensörünün yerini tutuyor. Gösterim kendiliğinden oynar; denetlemek için fareye veya klavyeye dokun.",go:"Gir"},
+  i1:"Bu, Hülya Elibol'un Toprak Ana çalışmasının tarayıcıda çalışan bir simülasyonudur. Gerçek kurulumda orijinal tablo, projeksiyon ve bir sensör kullanılacak; burada fare ve klavye sensörün yerini tutar.",
+  i2:"Nasıl kullanılır: sürükleyerek etrafına bak, W A S D ya da tekerlekle yürü. Boşluk tuşunu basılı tutmak iki açık avucu temsil eder; fareyi oynatmak elin yüksekliğini ve yönünü, yani sesi değiştirir.",
+  i3:"Ses var, kulaklık önerilir.",
+  iProto:"Hiçbir şeye dokunmazsan gösterim kendiliğinden oynar; denetlemek için fareye veya klavyeye dokun.",go:"Gir"},
  en:{credit:"Hülya Elibol · projection on the original painting · simulation",snd:"sound",palm:"OPEN PALMS",cntL:"killed in war · since early 2025 · estimate",cap0:"The painting is silent.",cap1:"The visitor approaches.",cap2:"As they come closer, the painting wakes.",cap3:"Both palms open. A light rises from the root of the tree.",cap4:"The unborn figures wake one by one.",cap5:"The number sinks to zero and dissolves into light.",cap6:"Hands lower. The number returns to its real value.",cap7:"Stopping lasts only as long as it is held.",
   hint:"drag: look around · W A S D / wheel: walk · hold space: open your palms, move the mouse: your hand (height = pitch, sideways = direction) · E: light spilling onto the wall · R: rings (vision) · T: counter speed · Z: zeroing time (5/10/15 s) · A: auto demo · M: sound · H: hide interface",
   iTitle:"Mother Earth",
-  i1:"In the middle of a dark room, Hülya Elibol's Mother Earth hangs in mid-air. Her hair and the branches of her tree reach beyond the painting, onto the wall.",
-  i2:"Walk around her, come closer. When you open both palms as if carrying a life, a light slowly rises from the root of the tree, passes through the child and wakes the unborn figures one by one; the roots spilling from her hair and branches onto the wall wake with the same light. The numbers in the air and the counter slowly sink to zero. The moment you lower your hands, they return. The heartbeat turns into a wave, and it changes as you move your hand.",
-  i3:"Come closer. Look. Open your palms.",
-  iProto:"Simulation: projected light is added onto the original painting. Keyboard, mouse and space bar stand in for the Kinect sensor. The demo plays by itself; touch the mouse or keyboard to take over.",go:"Enter"}
+  i1:"This is a browser-based simulation of Hülya Elibol's Mother Earth. The real installation will use the original painting, a projector and a sensor; here the mouse and keyboard stand in for the sensor.",
+  i2:"How to use: drag to look around, walk with W A S D or the wheel. Holding the space bar stands for two open palms; moving the mouse changes the height and direction of the hand, and so the sound.",
+  i3:"There is sound; headphones recommended.",
+  iProto:"If you touch nothing, the demo plays by itself; touch the mouse or keyboard to take over.",go:"Enter"}
 };
 let LANG="tr";
 function applyLang(l){
@@ -112,11 +112,26 @@ S.count=Math.round((Date.now()-Date.UTC(2025,0,1))/86400000*(240000/365));   // 
 S.demo=true; S.zsec=Math.max(2,Math.min(40,+(new URLSearchParams(location.search).get('zero')||10)));
 
 /* ---------- ses ---------- */
-let AC=null,master=null,drone=null,wBus=null,wL=null,wR=null,wH=null;
+let AC=null,master=null,drone=null,wBus=null,wL=null,wR=null,wH=null,recDest=null,REC=null;
+/* gizli: V tuşu = sekmeyi sesiyle kaydet (52 sn otomatik döngü), webm olarak indirir */
+async function toggleRec(){
+  if(REC&&REC.state==="recording"){REC.stop();return}
+  if(!S.entered||!recDest||!navigator.mediaDevices||!navigator.mediaDevices.getDisplayMedia||typeof MediaRecorder==="undefined")return;
+  let vs;try{vs=await navigator.mediaDevices.getDisplayMedia({video:{frameRate:30},audio:false,preferCurrentTab:true})}catch(e){return}
+  const ms=new MediaStream([...vs.getVideoTracks(),...recDest.stream.getAudioTracks()]);
+  const mt=["video/webm;codecs=vp9,opus","video/webm;codecs=vp8,opus","video/webm"].find(m=>MediaRecorder.isTypeSupported(m));
+  const ch=[];REC=new MediaRecorder(ms,{mimeType:mt,videoBitsPerSecond:5e6});
+  REC.ondataavailable=e=>{if(e.data.size)ch.push(e.data)};
+  REC.onstop=()=>{vs.getTracks().forEach(t=>t.stop());const a=document.createElement("a");a.href=URL.createObjectURL(new Blob(ch,{type:"video/webm"}));a.download="toprak-ana-demo.webm";document.body.appendChild(a);a.click();a.remove()};
+  S.auto=true;S.autoT=0;S.userAt=-999;
+  REC.start(500);
+  setTimeout(()=>{if(REC&&REC.state==="recording")REC.stop()},54000);
+}
 function startAudio(){
   try{
     AC=new (window.AudioContext||window.webkitAudioContext)();
     master=AC.createGain(); master.gain.value=S.muted?0:1; master.connect(AC.destination);
+    recDest=AC.createMediaStreamDestination(); master.connect(recDest);
     const g=AC.createGain(); g.gain.value=.02; g.connect(master);
     [54,54.5,81.2].forEach((f,i)=>{const o=AC.createOscillator();o.type="sine";o.frequency.value=f;const gg=AC.createGain();gg.gain.value=i==2?.4:1;o.connect(gg);gg.connect(g);o.start()});
     drone=g;
@@ -849,6 +864,7 @@ window.addEventListener("keydown",e=>{
  if(e.code==="Space"){e.preventDefault();if(!e.repeat)palmSet(1)}
  else if(e.key==="m"||e.key==="M")toggleMute();
  else if(e.key==="h"||e.key==="H")$("hud").classList.toggle("quiet");
+ else if(e.key==="v"||e.key==="V")toggleRec();
  else if(e.key==="e"||e.key==="E")S.exT=S.exT?0:1;
  else if(e.key==="t"||e.key==="T")S.demo=!S.demo;
  else if(e.key==="r"||e.key==="R")S.ringOn=S.ringOn?0:1;
